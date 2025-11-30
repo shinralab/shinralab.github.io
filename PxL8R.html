@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PxL8R</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #c4c4c4 0%, #7c7c7c 50%, #4a4a4a 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: #e8e8e8;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            padding: 20px;
+            max-width: 1100px;
+            width: 100%;
+            border: 4px solid #7c7c7c;
+        }
+
+        h1 {
+            text-align: center;
+            color: #5a52a5;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            text-shadow: 2px 2px #4a4a4a;
+        }
+
+        .drop-zone {
+            border: 3px dashed #5a52a5;
+            border-radius: 10px;
+            padding: 30px 20px;
+            text-align: center;
+            background: #d4d4d4;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            background: #c4c4c4;
+            border-color: #7070ca;
+            transform: scale(1.02);
+        }
+
+        .drop-zone-text {
+            color: #5a52a5;
+            font-size: 1em;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .drop-zone-subtext {
+            color: #7c7c7c;
+            font-size: 0.85em;
+        }
+
+        .preview-section {
+            display: none;
+        }
+
+        .preview-section.active {
+            display: block;
+        }
+
+        .canvas-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .canvas-box {
+            position: relative;
+            padding: 15px;
+            background: #d4d4d4;
+            border-radius: 10px;
+            border: 3px solid #7c7c7c;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .canvas-title {
+            font-weight: 700;
+            color: #5a52a5;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            text-align: center;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        canvas {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            background: #e8e8e8;
+            border: 2px solid #7c7c7c;
+        }
+
+        canvas.selectable {
+            cursor: crosshair;
+        }
+
+        .selection-box {
+            position: absolute;
+            border: 3px dashed #5a52a5;
+            background: rgba(90, 82, 165, 0.2);
+            pointer-events: none;
+        }
+
+        .controls-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .control-panel {
+            background: #d4d4d4;
+            padding: 12px;
+            border-radius: 10px;
+            border: 3px solid #7c7c7c;
+        }
+
+        .panel-title {
+            font-weight: 700;
+            color: #5a52a5;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+            text-align: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 10px;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            color: #4a4a4a;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 0.85em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 5px;
+            background: #7c7c7c;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #5a52a5;
+            cursor: pointer;
+            border: 2px solid #e8e8e8;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #5a52a5;
+            cursor: pointer;
+            border: 2px solid #e8e8e8;
+        }
+
+        .value-display {
+            color: #5a52a5;
+            font-weight: bold;
+        }
+
+        .palette-selector {
+            background: #d4d4d4;
+            padding: 12px;
+            border-radius: 10px;
+            border: 3px solid #7c7c7c;
+            margin-bottom: 15px;
+        }
+
+        .palette-title {
+            font-weight: 700;
+            color: #5a52a5;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+            text-align: center;
+        }
+
+        .palette-buttons {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+        }
+
+        .palette-btn {
+            padding: 8px;
+            border: 2px solid #7c7c7c;
+            background: #e8e8e8;
+            color: #4a4a4a;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.8em;
+            font-family: 'Courier New', monospace;
+        }
+
+        .palette-btn.active {
+            background: #5a52a5;
+            color: #e8e8e8;
+            border-color: #7070ca;
+        }
+
+        .palette-btn:hover {
+            transform: translateY(-2px);
+            border-color: #5a52a5;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #7c7c7c;
+            color: #e8e8e8;
+            border: 3px solid #5a52a5;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            font-family: 'Courier New', monospace;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(90, 82, 165, 0.4);
+            background: #5a52a5;
+            color: #e8e8e8;
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #7c7c7c;
+            border-color: #4a4a4a;
+            color: #4a4a4a;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background: #e8e8e8;
+            border-color: #7c7c7c;
+            color: #4a4a4a;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .controls-section {
+                grid-template-columns: 1fr;
+            }
+
+            .canvas-container {
+                grid-template-columns: 1fr;
+            }
+
+            .palette-buttons {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            h1 {
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 PxL8R</h1>
+        
+        <div class="drop-zone" id="dropZone">
+            <div class="drop-zone-text">📁 DROP IMAGE HERE</div>
+            <div class="drop-zone-subtext">or click to browse</div>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <div class="canvas-container">
+                <div class="canvas-box">
+                    <div class="canvas-title">ORIGINAL</div>
+                    <canvas id="originalCanvas"></canvas>
+                </div>
+                <div class="canvas-box">
+                    <div class="canvas-title">PXL8TED</div>
+                    <div class="canvas-wrapper" id="canvasWrapper">
+                        <canvas id="mainCanvas"></canvas>
+                        <div class="selection-box" id="selectionBox" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="palette-selector">
+                <div class="palette-title">RETRO PALETTE</div>
+                <div class="palette-buttons">
+                    <button class="palette-btn active" id="paletteNone">NONE</button>
+                    <button class="palette-btn" id="paletteGB">GAME BOY</button>
+                    <button class="palette-btn" id="paletteNES">NES</button>
+                    <button class="palette-btn" id="paletteSNES">SNES</button>
+                    <button class="palette-btn" id="paletteGBA">GBA</button>
+                </div>
+            </div>
+
+            <div class="controls-section">
+                <div class="control-panel">
+                    <div class="panel-title">FULL IMAGE</div>
+                    <div class="control-group">
+                        <label>
+                            PIXEL SIZE
+                            <span class="value-display" id="fullPixelSizeValue">2.0</span>
+                        </label>
+                        <input type="range" id="fullPixelSize" min="0.1" max="15" step="0.1" value="2">
+                    </div>
+                    <div class="control-group">
+                        <label>
+                            COLOR DEPTH
+                            <span class="value-display" id="fullColorDepthValue">32</span>
+                        </label>
+                        <input type="range" id="fullColorDepth" min="4" max="64" value="32">
+                    </div>
+                </div>
+
+                <div class="control-panel">
+                    <div class="panel-title">SELECTION</div>
+                    <div class="control-group">
+                        <label>
+                            PIXEL SIZE
+                            <span class="value-display" id="selectPixelSizeValue">2.0</span>
+                        </label>
+                        <input type="range" id="selectPixelSize" min="0.1" max="15" step="0.1" value="2">
+                    </div>
+                    <div class="control-group">
+                        <label>
+                            COLOR DEPTH
+                            <span class="value-display" id="selectColorDepthValue">32</span>
+                        </label>
+                        <input type="range" id="selectColorDepth" min="4" max="64" value="32">
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button id="selectBtn">✂️ SELECT</button>
+                <button id="applyBtn">🎨 APPLY</button>
+                <button class="secondary" id="resetBtn">🔄 RESET</button>
+                <button id="saveBtn">💾 SAVE</button>
+                <button id="saveAsBtn">📥 SAVE AS</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentImage = null;
+        let workingCanvas = null;
+        let selection = null;
+        let isSelecting = false;
+        let selectionEnabled = false;
+        let startX, startY;
+        let currentPalette = 'none';
+
+        // Retro Gaming Palettes
+        const palettes = {
+            'gb': [
+                [15, 56, 15],
+                [48, 98, 48],
+                [139, 172, 15],
+                [155, 188, 15]
+            ],
+            'nes': [
+                [124, 124, 124], [0, 0, 252], [0, 0, 188], [68, 40, 188],
+                [148, 0, 132], [168, 0, 32], [168, 16, 0], [136, 20, 0],
+                [80, 48, 0], [0, 120, 0], [0, 104, 0], [0, 88, 0],
+                [0, 64, 88], [0, 0, 0], [188, 188, 188], [0, 120, 248],
+                [0, 88, 248], [104, 68, 252], [216, 0, 204], [228, 0, 88],
+                [248, 56, 0], [228, 92, 16], [172, 124, 0], [0, 184, 0],
+                [0, 168, 0], [0, 168, 68], [0, 136, 136], [248, 248, 248],
+                [60, 188, 252], [104, 136, 252], [152, 120, 248], [248, 120, 248],
+                [248, 88, 152], [248, 120, 88], [252, 160, 68], [248, 184, 0],
+                [184, 248, 24], [88, 216, 84], [88, 248, 152], [0, 232, 216],
+                [120, 120, 120], [252, 252, 252], [164, 228, 252], [184, 184, 248],
+                [216, 184, 248], [248, 184, 248], [248, 164, 192], [240, 208, 176],
+                [252, 224, 168], [248, 216, 120], [216, 248, 120], [184, 248, 184],
+                [184, 248, 216], [0, 252, 252], [216, 216, 216]
+            ],
+            'snes': [
+                [0, 0, 0], [128, 128, 128], [192, 192, 192], [255, 255, 255],
+                [128, 0, 0], [255, 0, 0], [128, 64, 0], [255, 128, 0],
+                [128, 128, 0], [255, 255, 0], [0, 128, 0], [0, 255, 0],
+                [0, 128, 128], [0, 255, 255], [0, 0, 128], [0, 0, 255],
+                [64, 0, 128], [128, 0, 255], [128, 0, 64], [255, 0, 128],
+                [255, 128, 192], [128, 64, 64], [192, 128, 64], [64, 128, 64],
+                [64, 64, 128], [160, 82, 45], [210, 180, 140], [34, 139, 34],
+                [70, 130, 180], [147, 112, 219], [188, 143, 143], [238, 232, 170]
+            ],
+            'gba': [
+                [0, 0, 0], [85, 85, 85], [170, 170, 170], [255, 255, 255],
+                [255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 0],
+                [255, 0, 255], [0, 255, 255], [128, 0, 0], [0, 128, 0],
+                [0, 0, 128], [128, 128, 0], [128, 0, 128], [0, 128, 128]
+            ]
+        };
+
+        // Get elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const previewSection = document.getElementById('previewSection');
+        const originalCanvas = document.getElementById('originalCanvas');
+        const mainCanvas = document.getElementById('mainCanvas');
+        const selectionBox = document.getElementById('selectionBox');
+
+        const fullPixelSize = document.getElementById('fullPixelSize');
+        const fullColorDepth = document.getElementById('fullColorDepth');
+        const selectPixelSize = document.getElementById('selectPixelSize');
+        const selectColorDepth = document.getElementById('selectColorDepth');
+
+        // Set up event listeners
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                loadImage(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) loadImage(file);
+        });
+
+        fullPixelSize.addEventListener('input', (e) => {
+            document.getElementById('fullPixelSizeValue').textContent = parseFloat(e.target.value).toFixed(1);
+            if (currentImage) applyFullPixelation();
+        });
+
+        fullColorDepth.addEventListener('input', (e) => {
+            document.getElementById('fullColorDepthValue').textContent = e.target.value;
+            if (currentImage) applyFullPixelation();
+        });
+
+        selectPixelSize.addEventListener('input', (e) => {
+            document.getElementById('selectPixelSizeValue').textContent = parseFloat(e.target.value).toFixed(1);
+        });
+
+        selectColorDepth.addEventListener('input', (e) => {
+            document.getElementById('selectColorDepthValue').textContent = e.target.value;
+        });
+
+        // Palette buttons
+        document.getElementById('paletteNone').addEventListener('click', () => setPalette('none'));
+        document.getElementById('paletteGB').addEventListener('click', () => setPalette('gb'));
+        document.getElementById('paletteNES').addEventListener('click', () => setPalette('nes'));
+        document.getElementById('paletteSNES').addEventListener('click', () => setPalette('snes'));
+        document.getElementById('paletteGBA').addEventListener('click', () => setPalette('gba'));
+
+        // Action buttons
+        document.getElementById('selectBtn').addEventListener('click', enableSelection);
+        document.getElementById('applyBtn').addEventListener('click', applySelectionPixelation);
+        document.getElementById('resetBtn').addEventListener('click', resetImage);
+        document.getElementById('saveBtn').addEventListener('click', downloadImage);
+        document.getElementById('saveAsBtn').addEventListener('click', downloadImageAs);
+
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    currentImage = img;
+                    resetImage();
+                    previewSection.classList.add('active');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function setPalette(palette) {
+            currentPalette = palette;
+            document.querySelectorAll('.palette-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('palette' + palette.toUpperCase().replace('SNES', 'SNES').replace('NONE', 'None')).classList.add('active');
+            if (currentImage) applyFullPixelation();
+        }
+
+        function findClosestColor(r, g, b, palette) {
+            let minDist = Infinity;
+            let closest = [r, g, b];
+            
+            for (let color of palette) {
+                const dist = Math.sqrt(
+                    Math.pow(r - color[0], 2) +
+                    Math.pow(g - color[1], 2) +
+                    Math.pow(b - color[2], 2)
+                );
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = color;
+                }
+            }
+            
+            return closest;
+        }
+
+        function applyPaletteToImageData(imageData, palette, colorDepth) {
+            const data = imageData.data;
+            
+            // Calculate how many colors to use from the palette based on color depth
+            const paletteSize = Math.max(2, Math.min(palette.length, Math.floor(palette.length * (colorDepth / 64))));
+            const usedPalette = palette.slice(0, paletteSize);
+            
+            for (let i = 0; i < data.length; i += 4) {
+                const closest = findClosestColor(data[i], data[i + 1], data[i + 2], usedPalette);
+                data[i] = closest[0];
+                data[i + 1] = closest[1];
+                data[i + 2] = closest[2];
+            }
+        }
+
+        function resetImage() {
+            if (!currentImage) return;
+
+            const maxSize = 375;
+            let width = currentImage.width;
+            let height = currentImage.height;
+
+            if (width > maxSize || height > maxSize) {
+                if (width > height) {
+                    height = (height / width) * maxSize;
+                    width = maxSize;
+                } else {
+                    width = (width / height) * maxSize;
+                    height = maxSize;
+                }
+            }
+
+            // Set up original canvas
+            originalCanvas.width = width;
+            originalCanvas.height = height;
+            const origCtx = originalCanvas.getContext('2d');
+            origCtx.drawImage(currentImage, 0, 0, width, height);
+
+            // Set up main canvas
+            mainCanvas.width = width;
+            mainCanvas.height = height;
+
+            workingCanvas = document.createElement('canvas');
+            workingCanvas.width = width;
+            workingCanvas.height = height;
+            const workingCtx = workingCanvas.getContext('2d');
+            workingCtx.drawImage(currentImage, 0, 0, width, height);
+
+            selection = null;
+            selectionBox.style.display = 'none';
+            selectionEnabled = false;
+            mainCanvas.classList.remove('selectable');
+            
+            applyFullPixelation();
+        }
+
+        function enableSelection() {
+            selectionEnabled = true;
+            mainCanvas.classList.add('selectable');
+            selection = null;
+            selectionBox.style.display = 'none';
+        }
+
+        function applyFullPixelation() {
+            if (!currentImage) return;
+
+            const pixelSize = parseFloat(fullPixelSize.value);
+            const colorDepth = parseInt(fullColorDepth.value);
+
+            const ctx = mainCanvas.getContext('2d');
+            ctx.drawImage(currentImage, 0, 0, mainCanvas.width, mainCanvas.height);
+
+            const smallWidth = Math.max(1, Math.floor(mainCanvas.width / pixelSize));
+            const smallHeight = Math.max(1, Math.floor(mainCanvas.height / pixelSize));
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = smallWidth;
+            tempCanvas.height = smallHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.imageSmoothingEnabled = false;
+
+            tempCtx.drawImage(mainCanvas, 0, 0, smallWidth, smallHeight);
+
+            const imageData = tempCtx.getImageData(0, 0, smallWidth, smallHeight);
+
+            if (currentPalette !== 'none' && palettes[currentPalette]) {
+                applyPaletteToImageData(imageData, palettes[currentPalette], colorDepth);
+            } else {
+                const data = imageData.data;
+                const colorStep = Math.floor(256 / colorDepth);
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = Math.floor(data[i] / colorStep) * colorStep;
+                    data[i + 1] = Math.floor(data[i + 1] / colorStep) * colorStep;
+                    data[i + 2] = Math.floor(data[i + 2] / colorStep) * colorStep;
+                }
+            }
+
+            tempCtx.putImageData(imageData, 0, 0);
+
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(tempCanvas, 0, 0, mainCanvas.width, mainCanvas.height);
+
+            const workingCtx = workingCanvas.getContext('2d');
+            workingCtx.drawImage(mainCanvas, 0, 0);
+        }
+
+        mainCanvas.addEventListener('mousedown', (e) => {
+            if (!selectionEnabled) return;
+
+            const rect = mainCanvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+            isSelecting = true;
+            selectionBox.style.display = 'block';
+        });
+
+        mainCanvas.addEventListener('mousemove', (e) => {
+            if (!isSelecting) return;
+
+            const rect = mainCanvas.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+
+            const x = Math.min(startX, currentX);
+            const y = Math.min(startY, currentY);
+            const width = Math.abs(currentX - startX);
+            const height = Math.abs(currentY - startY);
+
+            selectionBox.style.left = x + 'px';
+            selectionBox.style.top = y + 'px';
+            selectionBox.style.width = width + 'px';
+            selectionBox.style.height = height + 'px';
+        });
+
+        mainCanvas.addEventListener('mouseup', (e) => {
+            if (!isSelecting) return;
+
+            const rect = mainCanvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+
+            const scaleX = mainCanvas.width / rect.width;
+            const scaleY = mainCanvas.height / rect.height;
+
+            selection = {
+                x: Math.min(startX, endX) * scaleX,
+                y: Math.min(startY, endY) * scaleY,
+                width: Math.abs(endX - startX) * scaleX,
+                height: Math.abs(endY - startY) * scaleY
+            };
+
+            isSelecting = false;
+            selectionEnabled = false;
+            mainCanvas.classList.remove('selectable');
+        });
+
+        function applySelectionPixelation() {
+            if (!selection || !workingCanvas) return;
+
+            const pixelSize = parseFloat(selectPixelSize.value);
+            const colorDepth = parseInt(selectColorDepth.value);
+
+            const smallWidth = Math.max(1, Math.floor(selection.width / pixelSize));
+            const smallHeight = Math.max(1, Math.floor(selection.height / pixelSize));
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = smallWidth;
+            tempCanvas.height = smallHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.imageSmoothingEnabled = false;
+
+            tempCtx.drawImage(workingCanvas, selection.x, selection.y, selection.width, selection.height, 0, 0, smallWidth, smallHeight);
+
+            const imageData = tempCtx.getImageData(0, 0, smallWidth, smallHeight);
+
+            if (currentPalette !== 'none' && palettes[currentPalette]) {
+                applyPaletteToImageData(imageData, palettes[currentPalette], colorDepth);
+            } else {
+                const data = imageData.data;
+                const colorStep = Math.floor(256 / colorDepth);
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = Math.floor(data[i] / colorStep) * colorStep;
+                    data[i + 1] = Math.floor(data[i + 1] / colorStep) * colorStep;
+                    data[i + 2] = Math.floor(data[i + 2] / colorStep) * colorStep;
+                }
+            }
+
+            tempCtx.putImageData(imageData, 0, 0);
+
+            const ctx = mainCanvas.getContext('2d');
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(tempCanvas, 0, 0, smallWidth, smallHeight, selection.x, selection.y, selection.width, selection.height);
+
+            const workingCtx = workingCanvas.getContext('2d');
+            workingCtx.drawImage(mainCanvas, 0, 0);
+
+            selection = null;
+            selectionBox.style.display = 'none';
+        }
+
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.download = 'PxL8R-.png';
+            link.href = mainCanvas.toDataURL();
+            link.click();
+        }
+
+        function downloadImageAs() {
+            const filename = prompt('Enter filename (without extension):', 'PxL8R-image');
+            if (filename) {
+                const link = document.createElement('a');
+                link.download = filename + '.png';
+                link.href = mainCanvas.toDataURL();
+                link.click();
+            }
+        }
+    </script>
+</body>
+</html>
