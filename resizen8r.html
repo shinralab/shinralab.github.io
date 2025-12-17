@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ReSIZEN8R</title>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  
+  body { 
+    font-family: 'Press Start 2P', cursive;
+    background: #9e9e9e;
+    color: #8a2be2;
+    max-width: 960px; margin: 2em auto; padding: 1em;
+    image-rendering: pixelated;
+  }
+  h1 { text-align:center; color:#8a2be2; text-shadow: 3px 3px #5a5a5a; margin-bottom:0.2em; }
+  
+  #upload-area {
+    text-align: center;
+    margin: 30px 0;
+  }
+  #file-input { display: none; }
+  #choose-btn {
+    font-family: 'Press Start 2P', cursive;
+    padding: 14px 28px; background:#5a5a5a; color:#fff;
+    border: 6px solid #ba2636; cursor: pointer; font-size: 1em;
+  }
+  #choose-btn:hover { background:#ba2636; }
+  #choose-btn.disabled { opacity:0.5; cursor:not-allowed; pointer-events:none; }
+  
+  #preview { 
+    max-width:340px; max-height:340px; margin:20px auto; display:block;
+    border:8px solid #5a5a5a; image-rendering:pixelated;
+  }
+  
+  .controls { text-align:center; margin:30px 0; }
+  button { 
+    font-family: 'Press Start 2P', cursive;
+    padding:12px 20px; margin:8px; background:#5a5a5a; color:#fff;
+    border:4px solid #ba2636; cursor:pointer; font-size:0.9em;
+  }
+  button:hover { background:#ba2636; }
+  #eyedropper { background:#ffcc00; color:#000; border-color:#ff9900; }
+  #eyedropper.active { background:#ff9900; }
+  
+  #custom-sizes {
+    margin: 30px 0;
+    text-align: center;
+  }
+  #custom-list {
+    margin: 15px 0;
+    min-height: 30px;
+  }
+  .custom-item {
+    display: inline-block;
+    background: #3a3a3a;
+    padding: 8px 12px;
+    margin: 5px;
+    border: 4px solid #5a5a5a;
+    font-size: 0.8em;
+  }
+  .custom-item button {
+    margin-left: 10px;
+    padding: 2px 8px;
+    font-size: 0.8em;
+  }
+  
+  #output { 
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:20px; margin-top:40px;
+  }
+  .item { background:#3a3a3a; padding:12px; border:6px solid #5a5a5a; text-align:center; }
+  .item img { width:100%; image-rendering:pixelated; }
+  .item a { color:#ba2636; text-decoration:none; display:block; margin-top:8px; font-size:0.75em; }
+</style>
+</head>
+<body>
+
+<h1>ReSIZEN8R</h1>
+
+<div id="upload-area">
+  <label>
+    <input type="file" id="file-input" accept="image/*" multiple>
+    <div id="choose-btn">CHOOSE IMAGE(S)</div>
+  </label>
+  <img id="preview" src="" alt="">
+</div>
+
+<div class="controls">
+  <label>BACKDROP COLOR:</label><br>
+  <input type="color" id="color-picker" value="#000000">
+  <label style="margin-left:15px;"><input type="checkbox" id="transparent"> Transparent BG</label>
+  <button id="eyedropper">Eye Dropper</button>
+  <br><br>
+  <button id="generate">GENERATE ALL SIZES</button>
+  <button id="download-zip" style="display:none">DOWNLOAD ALL (ZIP)</button>
+</div>
+
+<div id="custom-sizes">
+  <strong>CUSTOM SIZES (px)</strong><br>
+  Width: <input type="number" id="custom-w" min="1" placeholder="e.g. 3000" style="width:100px;">
+  Height: <input type="number" id="custom-h" min="1" placeholder="e.g. 4000" style="width:100px;">
+  <button id="add-custom">ADD</button>
+  <div id="custom-list"></div>
+</div>
+
+<div id="output"></div>
+
+<script>
+const PRESET_SIZES = {
+  "TShirt_4500x5400": [4500,5400],
+  "TShirt_Wide_5400x4500": [5400,4500],
+  "Hoodie_5400x6300": [5400,6300],
+  "Mug_Wrap_7500x3250": [7500,3250],
+  "Mug_Full_7500x7500": [7500,7500],
+  "Poster_18x24_5400x7200": [5400,7200],
+  "Tote_4500x5100": [4500,5100],
+  "PhoneCase_2250x4500": [2250,4500]
+};
+
+let customSizes = []; // [{name: "Custom_3000x4000", w:3000, h:4000}, ...]
+let images = []; // array of loaded Image objects for batch
+let blobs = [];
+let eyedropperActive = false;
+
+const fileInput = document.getElementById('file-input');
+const chooseBtn = document.getElementById('choose-btn');
+const preview = document.getElementById('preview');
+const eyedropperBtn = document.getElementById('eyedropper');
+const transparentCheck = document.getElementById('transparent');
+const colorPicker = document.getElementById('color-picker');
+const customW = document.getElementById('custom-w');
+const customH = document.getElementById('custom-h');
+const addCustomBtn = document.getElementById('add-custom');
+const customList = document.getElementById('custom-list');
+
+fileInput.onchange = e => {
+  images = [];
+  const files = Array.from(e.target.files);
+  if (files.length === 0) return;
+
+  let loaded = 0;
+  files.forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        images.push(img);
+        loaded++;
+        if (loaded === files.length) {
+          // show first image as preview
+          preview.src = ev.target.result;
+          preview.style.display = 'block';
+        }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
+eyedropperBtn.onclick = () => {
+  if (images.length === 0) return;
+  eyedropperActive = !eyedropperActive;
+  eyedropperBtn.classList.toggle('active', eyedropperActive);
+  chooseBtn.classList.toggle('disabled', eyedropperActive);
+  preview.style.cursor = eyedropperActive ? 'crosshair' : 'default';
+};
+
+preview.onclick = e => {
+  if (!eyedropperActive || images.length === 0) return;
+  const img = images[0]; // use first image for picking
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  const rect = preview.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (img.naturalWidth / rect.width);
+  const y = (e.clientY - rect.top) * (img.naturalHeight / rect.height);
+  const pixel = ctx.getImageData(x, y, 1, 1).data;
+  const hex = "#" + [pixel[0],pixel[1],pixel[2]].map(n=>n.toString(16).padStart(2,'0')).join('');
+  colorPicker.value = hex;
+
+  eyedropperActive = false;
+  eyedropperBtn.classList.remove('active');
+  chooseBtn.classList.remove('disabled');
+  preview.style.cursor = 'default';
+};
+
+addCustomBtn.onclick = () => {
+  const w = parseInt(customW.value);
+  const h = parseInt(customH.value);
+  if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) return;
+  const name = `Custom_${w}x${h}`;
+  customSizes.push({name, w, h});
+  customW.value = '';
+  customH.value = '';
+  updateCustomList();
+};
+
+function updateCustomList() {
+  customList.innerHTML = '';
+  customSizes.forEach((size, i) => {
+    const div = document.createElement('div');
+    div.className = 'custom-item';
+    div.innerHTML = `${size.name} <button onclick="removeCustom(${i})">X</button>`;
+    customList.appendChild(div);
+  });
+}
+
+window.removeCustom = index => {
+  customSizes.splice(index, 1);
+  updateCustomList();
+};
+
+document.getElementById('generate').onclick = () => {
+  if (images.length === 0) return alert("Choose at least one image first!");
+  const output = document.getElementById('output');
+  output.innerHTML = '';
+  blobs = [];
+  const isTransparent = transparentCheck.checked;
+  const color = isTransparent ? null : colorPicker.value;
+
+  const allSizes = {...PRESET_SIZES, ...Object.fromEntries(customSizes.map(s => [s.name, [s.w, s.h]]))};
+
+  images.forEach((img, imgIndex) => {
+    Object.entries(allSizes).forEach(([name, [w, h]]) => {
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext('2d');
+      if (!isTransparent) {
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, w, h);
+      }
+      const ratio = Math.min(w / img.width, h / img.height);
+      const nw = img.width * ratio;
+      const nh = img.height * ratio;
+      ctx.drawImage(img, (w - nw) / 2, (h - nh) / 2, nw, nh);
+
+      c.toBlob(blob => {
+        const fileName = images.length > 1 ? `${imgIndex+1}_${name}.png` : `${name}.png`;
+        const url = URL.createObjectURL(blob);
+        blobs.push({name: fileName, blob});
+
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `<img src="${url}"><br><a href="${url}" download="${fileName}">${name.replace(/_/g, ' ')}${images.length > 1 ? ` (img ${imgIndex+1})` : ''}</a>`;
+        output.appendChild(div);
+      }, 'image/png');
+    });
+  });
+
+  document.getElementById('download-zip').style.display = 'inline-block';
+};
+
+document.getElementById('download-zip').onclick = () => {
+  if (!blobs.length) return;
+  const zip = new JSZip();
+  blobs.forEach(b => zip.file(b.name, b.blob));
+  zip.generateAsync({type: 'blob'}).then(content => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(content);
+    a.download = 'ReSIZEN8R_POD_Pack.zip';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+};
+</script>
+</body>
+</html>
