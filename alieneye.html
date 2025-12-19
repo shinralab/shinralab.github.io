@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0;background:black;">
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let zoom = 1;
+let centerX = -0.5;
+let centerY = 0;
+
+function mandelbrot(x, y) {
+  let real = x;
+  let imag = y;
+  for (let i = 0; i < 100; i++) {
+    const real2 = real * real;
+    const imag2 = imag * imag;
+    if (real2 + imag2 > 4) return i;  // Escaped → color it
+    imag = 2 * real * imag + y;
+    real = real2 - imag2 + x;
+  }
+  return 100;  // Didn't escape → black
+}
+
+function draw() {
+  const w = canvas.width;
+  const h = canvas.height;
+  const img = ctx.createImageData(w, h);
+  const data = img.data;
+
+  for (let px = 0; px < w; px++) {
+    for (let py = 0; py < h; py++) {
+      const x = (px - w/2) / (200 * zoom) + centerX;
+      const y = (py - h/2) / (200 * zoom) + centerY;
+      const iter = mandelbrot(x, y);
+      
+      const i = (px + py * w) * 4;
+      const hue = (iter * 10 + Date.now() / 50) % 360;  // Slowly shifting colors
+      const color = HSVtoRGB(hue / 360, 1, iter < 100 ? 1 : 0);
+      
+      data[i]   = color.r;
+      data[i+1] = color.g;
+      data[i+2] = color.b;
+      data[i+3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  zoom *= 1.01;  // Slowly zoom in forever
+  requestAnimationFrame(draw);
+}
+
+function HSVtoRGB(h, s, v) {
+  let r, g, b;
+  const i = Math.floor(h * 6);
+  const f = h * 6 - i;
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+  switch (i % 6) {
+    case 0: r = v, g = t, b = p; break;
+    case 1: r = q, g = v, b = p; break;
+    case 2: r = p, g = v, b = t; break;
+    case 3: r = p, g = q, b = v; break;
+    case 4: r = t, g = p, b = v; break;
+    case 5: r = v, g = p, b = q; break;
+  }
+  return {r: r*255, g: g*255, b: b*255};
+}
+
+draw();
+
+// Click to recenter and speed up zoom
+canvas.onclick = (e) => {
+  centerX = (e.clientX - canvas.width/2) / (200 * zoom) + centerX;
+  centerY = (e.clientY - canvas.height/2) / (200 * zoom) + centerY;
+  zoom *= 0.5;  // Zoom in faster on click
+}
+</script>
+</body>
+</html>
